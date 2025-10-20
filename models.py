@@ -17,7 +17,7 @@ class Cone:
     color: int  # 0 = yellow (right), 1 = blue (left)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=False)
 class CarPose:
     """Pose of the car in the global/world frame."""
 

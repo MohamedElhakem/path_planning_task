@@ -136,6 +136,57 @@ _SCENARIOS: Dict[str, Tuple[List[Cone], CarPose]] = {
         [Cone(x=0.0, y=2.0, color=0)],
         CarPose(x=0.0, y=0.0, yaw=1.8),
     ),
+        
+        # 21: three yellow cones, no blue cones
+    "21": (
+        [
+            Cone(x=1.0, y=4.0, color=1),
+            Cone(x=3.0, y=4.5, color=1),
+            Cone(x=5.0, y=5.0, color=1),
+        ],
+        CarPose(x=0.0, y=0.0, yaw=0.6),
+    ),
+
+    # 22: three blue cones, no yellow cones
+    "22": (
+        [
+            Cone(x=1.0, y=1.0, color=0),
+            Cone(x=3.0, y=1.5, color=0),
+            Cone(x=5.0, y=2.0, color=0),
+        ],
+        CarPose(x=0.0, y=0.0, yaw=1.2),
+    ),
+
+    # 23: three yellow cones, forming a curve
+    "23": (
+        [
+            Cone(x=2.0, y=4.0, color=1),
+            Cone(x=3.0, y=5.0, color=1),
+            Cone(x=4.5, y=5.5, color=1),
+        ],
+        CarPose(x=0.0, y=0.0, yaw=1.8),
+    ),
+
+    # 24: three blue cones, forming a curve
+    "24": (
+        [
+            Cone(x=2.0, y=1.0, color=0),
+            Cone(x=3.5, y=1.5, color=0),
+            Cone(x=5.0, y=2.5, color=0),
+        ],
+        CarPose(x=0.0, y=0.0, yaw=2.4),
+    ),
+
+    # 25: three cones on one side, and one on the other
+    "25": (
+        [
+            Cone(x=1.0, y=3.5, color=1),
+            Cone(x=3.0, y=4.0, color=1),
+            Cone(x=5.0, y=4.5, color=1),
+            Cone(x=3.0, y=2.0, color=0),
+        ],
+        CarPose(x=0.0, y=0.0, yaw=0.4),
+    )
 }
 
 
