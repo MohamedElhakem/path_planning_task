@@ -14,7 +14,7 @@ class PathPlanning:
 
     Implement ONLY the generatePath function.
     """
-
+  
     def __init__(self, car_pose: CarPose, cones: List[Cone]):
         self.car_pose = car_pose
         self.cones = cones
@@ -35,20 +35,64 @@ class PathPlanning:
         Replace the placeholder implementation below with your algorithm.
         """
 
+
+        def sort_cones_by_chain_front(cones, cx, cy, heading):
+            if not cones:
+                return []
+
+            def is_in_front(cone):
+                # vector from car to cone
+                dx = cone.x - cx
+                dy = cone.y - cy
+                # angle between car heading and cone direction
+                angle = math.atan2(dy, dx) - heading
+                # normalize to -pi..pi
+                angle = math.atan2(math.sin(angle), math.cos(angle))
+                # in front means within ±90 degrees
+                return abs(angle) < math.pi / 2
+
+            # filter cones to those in front of car
+            front_cones = [c for c in cones if is_in_front(c)]
+
+            # start from nearest cone in front
+            if front_cones:
+                current_x, current_y = cx, cy
+                sorted_cones = []
+                remaining = front_cones[:]
+            else:
+                # if none in front, fall back to all cones
+                current_x, current_y = cx, cy
+                sorted_cones = []
+                remaining = cones[:]
+
+            # chain sort (nearest to current each step)
+            while remaining:
+                next_cone = min(remaining, key=lambda c: math.hypot(c.x - current_x, c.y - current_y))
+                sorted_cones.append(next_cone)
+                remaining.remove(next_cone)
+                current_x, current_y = next_cone.x, next_cone.y
+
+            return sorted_cones
+        
+        heading = self.car_pose.yaw
+        cx = self.car_pose.x
+        cy = self.car_pose.y
+
+        yellow_cones = sort_cones_by_chain_front(
+            [c for c in self.cones if c.color == 0],
+            cx, cy, heading
+        )
+        blue_cones = sort_cones_by_chain_front(
+            [c for c in self.cones if c.color == 1],
+            cx, cy, heading
+        )   
+
         # Default: produce a short straight-ahead path from the current pose.
         # delete/replace this with your own algorithm.
         path: Path2D = []
-        max_dist = 10 #m
+        max_dist = 10 #meters
         step = 0.1
-        cx = self.car_pose.x
-        cy = self.car_pose.y
         yaw_dir = []
-        yellow_cones = [cone for cone in self.cones if cone.color == 0]
-        blue_cones = [cone for cone in self.cones if cone.color == 1]
-
-        #Get nearest cones on each side to the car
-        yellow_cones.sort(key=lambda cone: math.hypot(cone.x - cx, cone.y - cy))
-        blue_cones.sort(key=lambda cone: math.hypot(cone.x - cx, cone.y - cy))
 
         #if no cones, go straight
         if not yellow_cones and not blue_cones:
@@ -60,12 +104,14 @@ class PathPlanning:
                 path.append((cx + dx, cy + dy))
             return path
         
-        #if only one side cones, move left to the blue cones or right to yellow cones
-
-        #Only adjust yaw if we have cones on both sides
-        #list of mid points
         main_points = []
         main_points.append((cx, cy))
+        
+        #if only one side cones, move left to the blue cones or right to yellow cones
+
+        
+        #Only adjust yaw if we have cones on both sides
+        #list of mid points
         if yellow_cones and blue_cones:
             mid_yo = (yellow_cones[0].y + blue_cones[0].y) / 2
             mid_xo = (yellow_cones[0].x + blue_cones[0].x) / 2
@@ -98,15 +144,26 @@ class PathPlanning:
             num_steps.append(int(dist / step))
             print(f"num_steps debug: dist={dist} steps={int(dist / step)}")
         num_steps.append(int((max_dist - sum(num_steps) * step) / step))
-                # debug print - run your scenario and read these numbers
-        print(f"DEBUG: yellow={len(yellow_cones)} blue={len(blue_cones)} main_points={len(main_points)} yaw_dir={len(yaw_dir)} num_steps={len(num_steps)} path={len(path)}")
-        
+            # debug print - run your scenario and read these numbers
+        print(f"DEBUG: yellow={len(yellow_cones)} blue={len(blue_cones)} main_points={len(main_points)} yaw_dir={len(yaw_dir)} num_steps={len(num_steps)} ") 
+        #generate path points
+        total_path_length = 0.0
+        last_point = main_points[0]
         for j in range(len(main_points)):
             for i in range(num_steps[j] + 1):
                 dx = math.cos(yaw_dir[j]) * step * i
                 dy = math.sin(yaw_dir[j]) * step * i
-                path.append((main_points[j][0] + dx,main_points[j][1]  + dy))
-    
+                new_point = (main_points[j][0] + dx, main_points[j][1] + dy)
+                next_dist = math.hypot(new_point[0] - last_point[0], new_point[1] - last_point[1]) 
+                if total_path_length + next_dist > max_dist:
+                    break
+                total_path_length += next_dist
+                last_point = new_point
+                path.append(new_point)
+        
+        # debug print - run your scenario and read these numbers
+        print(f"total_path_length={total_path_length}")
+
         return path
 
 
