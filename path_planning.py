@@ -215,10 +215,6 @@ class PathPlanning:
         yaw_dir.append(final_yaw)  # last point yaw
         for j in range(len(main_points)):
             main_points[j].yaw = yaw_dir[j]
-       #print main points
-        for i, p in enumerate(main_points):
-            print(f"main_point[{i}]: x={p.x}, y={p.y}, yaw={p.yaw}")  
-        
         #Edit the path so blue cones and yellow cones are on the correct side
         for i in range(len(main_points) - 1):
             p1 = main_points[i]
@@ -265,8 +261,7 @@ class PathPlanning:
                             yaw_new = math.atan2(p2.y - new_y, p2.x - new_x)
                             main_points[i].yaw = yaw_i
                             main_points.insert(i + 1, CarPose(new_x, new_y, yaw_new))
-
-
+    
         #number of steps to take between each two midpoints
         num_steps = []
         for j in range(1, len(main_points)):
