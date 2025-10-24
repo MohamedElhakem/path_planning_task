@@ -106,6 +106,24 @@ class PathPlanning:
 
             return matched_blue, matched_yellow, remaining_blue, remaining_yellow
         
+        def get_extension_point(main_points):
+            """Return a new CarPose at the end of the remaining distance."""
+            total_distance = 0.0
+            max_test = 30  # meters
+            for i in range(len(main_points) - 1):
+                p1 = main_points[i]
+                p2 = main_points[i + 1]
+                total_distance += math.hypot(p2.x - p1.x, p2.y - p1.y)
+
+            remaining_distance = max_test- total_distance
+            if remaining_distance <= 0:
+                return None
+
+            last_point = main_points[-1]
+            new_x = last_point.x + remaining_distance * math.cos(last_point.yaw)
+            new_y = last_point.y + remaining_distance * math.sin(last_point.yaw)
+            return CarPose(new_x, new_y, last_point.yaw) 
+        
         heading = self.car_pose.yaw
         cx = self.car_pose.x
         cy = self.car_pose.y
@@ -215,53 +233,96 @@ class PathPlanning:
         yaw_dir.append(final_yaw)  # last point yaw
         for j in range(len(main_points)):
             main_points[j].yaw = yaw_dir[j]
+
+        #add a checking loop
+        #add a checking midpoint if a cone is on the wrong side
+        new_point = get_extension_point(main_points)
+        if new_point:
+            main_points.append(new_point)
+
+
         #Edit the path so blue cones and yellow cones are on the correct side
-        for i in range(len(main_points) - 1):
-            p1 = main_points[i]
-            p2 = main_points[i + 1] 
-            offset =0.75  # meters
-            #vector from p1 to p2
-            vx = (p2.x - p1.x)
-            vy = (p2.y - p1.y)
-            #blue cones on the left side
-            if sblue_cones:
-                for j in range(len(sblue_cones)):
-                    #in the segement between p1 and p2
-                    if min(p1.x, p2.x) <= sblue_cones[j].x <= max(p1.x, p2.x) and min(p1.y, p2.y) <= sblue_cones[j].y <= max(p1.y, p2.y):
-                        #vector from p1 to blue cone
-                        bx = (sblue_cones[j].x - p1.x)
-                        by = (sblue_cones[j].y - p1.y)
-                        #cross product to determine side
-                        cross = vx * by - vy * bx
-                        if cross <= 0:
-                            #new main point at the vertex of the rectangle
-                            angle = math.atan2(by, bx) - math.pi / 2
-                            new_x = sblue_cones[j].x + offset * math.cos(angle)
-                            new_y = sblue_cones[j].y + offset * math.sin(angle)
-                            yaw_i = math.atan2(new_y - p1.y, new_x - p1.x)
-                            yaw_new = math.atan2(p2.y - new_y, p2.x - new_x)
-                            main_points[i].yaw = yaw_i
-                            main_points.insert(i + 1, CarPose(new_x, new_y, yaw_new))
-            #yellow cones on the right side
-            if syellow_cones:
-                for j in range(len(syellow_cones)):
-                    #in the segement between p1 and p2
-                    if min(p1.x, p2.x) <= syellow_cones[j].x <= max(p1.x, p2.x) and min(p1.y, p2.y) <= syellow_cones[j].y <= max(p1.y, p2.y):
-                        #vector from p1 to yellow cone
-                        yx = (syellow_cones[j].x - p1.x)
-                        yy = (syellow_cones[j].y - p1.y)
-                        #cross product to determine side
-                        cross = vx * yy - vy * yx
-                        if cross >= 0:
-                            #new main point at the vertex of the rectangle
-                            angle = math.atan2(yy, yx) + math.pi / 2
-                            new_x = syellow_cones[j].x + offset * math.cos(angle)
-                            new_y = syellow_cones[j].y + offset * math.sin(angle)
-                            yaw_i = math.atan2(new_y - p1.y, new_x - p1.x)
-                            yaw_new = math.atan2(p2.y - new_y, p2.x - new_x)
-                            main_points[i].yaw = yaw_i
-                            main_points.insert(i + 1, CarPose(new_x, new_y, yaw_new))
+        max_iterations = 20  # safety limit to avoid infinite loops
+        for _ in range(max_iterations):
+            corrected = False
+     
+            for i in range(len(main_points) - 1):
+                p1 = main_points[i]
+                p2 = main_points[i + 1] 
+                offset =0.75  # meters
+                #vector from p1 to p2
+                vx = (p2.x - p1.x)
+                vy = (p2.y - p1.y)
+                #blue cones on the left side
+                if sblue_cones:
+                    for j in range(len(sblue_cones)):
+                        #in the segement between p1 and p2
+                        if min(p1.x, p2.x) <= sblue_cones[j].x <= max(p1.x, p2.x) and min(p1.y, p2.y) <= sblue_cones[j].y <= max(p1.y, p2.y):
+                            #vector from p1 to blue cone
+                            bx = (sblue_cones[j].x - p1.x)
+                            by = (sblue_cones[j].y - p1.y)
+                            #cross product to determine side
+                            cross = vx * by - vy * bx
+                            if cross <= 0:
+                                #new main point at the vertex of the rectangle
+                                angle = math.atan2(by, bx) - math.pi / 2
+                                new_x = sblue_cones[j].x + offset * math.cos(angle)
+                                new_y = sblue_cones[j].y + offset * math.sin(angle)
+                                yaw_i = math.atan2(new_y - p1.y, new_x - p1.x)
+                                yaw_new = math.atan2(p2.y - new_y, p2.x - new_x)
+                                main_points[i].yaw = yaw_i
+                                main_points.insert(i + 1, CarPose(new_x, new_y, yaw_new))
+                                corrected = True
+                #yellow cones on the right side
+                if syellow_cones:
+                    for j in range(len(syellow_cones)):
+                        #in the segement between p1 and p2
+                        if min(p1.x, p2.x) <= syellow_cones[j].x <= max(p1.x, p2.x) and min(p1.y, p2.y) <= syellow_cones[j].y <= max(p1.y, p2.y):
+                            #vector from p1 to yellow cone
+                            yx = (syellow_cones[j].x - p1.x)
+                            yy = (syellow_cones[j].y - p1.y)
+                            #cross product to determine side
+                            cross = vx * yy - vy * yx
+                            if cross >= 0:
+                                #new main point at the vertex of the rectangle
+                                angle = math.atan2(yy, yx) + math.pi / 2
+                                new_x = syellow_cones[j].x + offset * math.cos(angle)
+                                new_y = syellow_cones[j].y + offset * math.sin(angle)
+                                yaw_i = math.atan2(new_y - p1.y, new_x - p1.x)
+                                yaw_new = math.atan2(p2.y - new_y, p2.x - new_x)
+                                main_points[i].yaw = yaw_i
+                                main_points.insert(i + 1, CarPose(new_x, new_y, yaw_new))
+                                corrected = True            
+            main_points.remove(main_points[-1])  # remove last extension point
+
+            if not corrected:
+                break
+            
+            #resort main points
+            final_yaw = main_points[-1].yaw
+            #sort main points
+            main_points = sort_by_chain_front(
+                main_points,
+                cx, cy, heading, 0
+            )
+            
+            #new yaw directions
+            yaw_dir = []
+            for j in range(1, len(main_points)):
+                yaw = math.atan2(main_points[j].y - main_points[j - 1].y, main_points[j].x - main_points[j - 1].x)
+                yaw_dir.append(yaw)
+            yaw_dir.append(final_yaw)  # last point yaw
+            for j in range(len(main_points)):
+                main_points[j].yaw = yaw_dir[j]
+            
+            new_point = get_extension_point(main_points)
+            if new_point:
+                main_points.append(new_point)
     
+        #print main points for debug
+        for i, p in enumerate(main_points):
+            print(f"main_point {i}: x={p.x}, y={p.y}, yaw={p.yaw}")
+        
         #number of steps to take between each two midpoints
         num_steps = []
         for j in range(1, len(main_points)):
